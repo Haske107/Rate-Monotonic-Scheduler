@@ -13,6 +13,7 @@ public class Scheduler extends Thread {
     private List<Worker> periodQueue;
     private List<String> Results = new ArrayList<>();
     private int OverrunCounter = 0;
+    private boolean OR;
 
     Scheduler (List<Worker> threads, TimedSemaphore sem, AtomicInteger counter, List<String> Results
             , int TimeQuantum) {
@@ -38,21 +39,27 @@ public class Scheduler extends Thread {
                 sem.acquire();
                 generatePeriodQueue();
                 StartTime = System.nanoTime();
+                checkAndHandleOverruns();
                 for( Worker  worker: periodQueue)   {
                     try {
                         Future<?> Future = Executor.submit(worker);
                         Future.get(TimeQuantum - (System.nanoTime() - StartTime) / 1000000, TimeUnit.MILLISECONDS);
                     }   catch (TimeoutException e)  {
                         Results.add("Worker "+ worker.period +":        Preempted");
+                        worker.state.set(false);
                     }
                 }
                 while((( System.nanoTime() - StartTime) / 1000000) < TimeQuantum)   {}
                 Duration = (System.nanoTime() - StartTime) / 1000000;
-                checkAndHandleOverruns();
                 Results.add("Period " + counter.get() + " --------------------------------------" + Duration + "ms");
-            }   catch (Exception e) { }   finally {
-                counter.incrementAndGet();
+            }   catch (Exception e) {
 
+            }
+            finally {
+                counter.incrementAndGet();
+                if(OR) {
+                    Results.add("                                               OVERRUNS: " + OverrunCounter);
+                }
             }
         }
     }
@@ -66,10 +73,11 @@ public class Scheduler extends Thread {
     }
 
     private void checkAndHandleOverruns()   {
+        OR = false;
         for (Worker worker: periodQueue)   {
             if(!worker.state.get())  {
                 OverrunCounter++;
-                Results.add("Worker "+ worker.period +":                        OVERRUN CONDITIONS SO FAR: " + OverrunCounter);
+                OR = true;
             }
         }
     }

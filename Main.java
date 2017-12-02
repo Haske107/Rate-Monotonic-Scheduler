@@ -15,7 +15,7 @@ public class Main {
         AtomicInteger counter = new AtomicInteger(0);
 
         // TIME QUANTUM ms
-        int TimeQuantum = 50;
+        int TimeQuantum = 20;
 
         // CREATE SEMAPHORE
         TimedSemaphore sem = new TimedSemaphore(TimeQuantum, TimeUnit.MILLISECONDS, 1);
